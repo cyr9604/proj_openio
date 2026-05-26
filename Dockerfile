@@ -11,7 +11,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
 
 COPY backend/ ./backend/
 COPY --from=builder /app/dist/ ./frontend/dist/
