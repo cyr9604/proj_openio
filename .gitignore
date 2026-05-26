@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+*.egg
+
+# Node
+frontend/node_modules/
+
+# Vite build output
+frontend/dist/
+
+# TypeScript build info
+frontend/tsconfig.tsbuildinfo
+
+# Vite cache
+.vite/
+
+# Database
+backend/stock_analysis.db
+backend/stock_analysis.db-shm
+backend/stock_analysis.db-wal
+backend/symbol_cache.json
+
+# Runtime config (user-specific)
+backend/config.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

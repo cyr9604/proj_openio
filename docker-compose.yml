@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    image: stock-analysis:latest
+    container_name: stock-analysis
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/stock_analysis.db:/app/backend/stock_analysis.db
+      - ./backend/config.json:/app/backend/config.json
+      - ./backend/symbol_cache.json:/app/backend/symbol_cache.json
+    restart: unless-stopped
