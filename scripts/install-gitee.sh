@@ -40,6 +40,12 @@ fi
 
 docker rm -f stock-analysis 2>/dev/null || true
 
+# Ensure mounted files exist (Docker bind mount requires the host path to exist)
+touch "$DATA_DIR/stock_analysis.db"
+if [[ ! -f "$DATA_DIR/symbol_cache.json" ]]; then
+  echo '[]' > "$DATA_DIR/symbol_cache.json"
+fi
+
 echo "Starting container on port $PORT ..."
 docker run -d \
   --name stock-analysis \
