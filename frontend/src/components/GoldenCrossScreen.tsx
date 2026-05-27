@@ -5,11 +5,14 @@ import { api } from '../api/client'
 import type { GoldenCrossItem } from '../types'
 
 const LS_KEY = 'gcScanId'
+const RESULTS_KEY = 'gcScanResults'
 
 export default function GoldenCrossScreen() {
   const [cachedData, setCachedData] = useState<GoldenCrossItem[]>([])
   const [cachedLoading, setCachedLoading] = useState(false)
-  const [fullResults, setFullResults] = useState<GoldenCrossItem[]>([])
+  const [fullResults, setFullResults] = useState<GoldenCrossItem[]>(() => {
+    try { return JSON.parse(localStorage.getItem(RESULTS_KEY) || '[]') } catch { return [] }
+  })
   const [scanId, setScanId] = useState<string | null>(null)
   const [scanStatus, setScanStatus] = useState<string>('')
   const [scanTotal, setScanTotal] = useState(0)
@@ -33,6 +36,7 @@ export default function GoldenCrossScreen() {
         setScanTotal(res.total)
         setScanProcessed(res.processed)
         setFullResults(res.results)
+        localStorage.setItem(RESULTS_KEY, JSON.stringify(res.results))
         if (res.status === 'completed' || res.status === 'cancelled') {
           localStorage.removeItem(LS_KEY)
           stopPolling()
@@ -74,6 +78,7 @@ export default function GoldenCrossScreen() {
 
   const handleFullScan = async () => {
     setFullResults([])
+    localStorage.removeItem(RESULTS_KEY)
     try {
       const { scan_id } = await api.startFullScan()
       localStorage.setItem(LS_KEY, scan_id)
@@ -108,6 +113,7 @@ export default function GoldenCrossScreen() {
 
   const clearFullScan = () => {
     localStorage.removeItem(LS_KEY)
+    localStorage.removeItem(RESULTS_KEY)
     stopPolling()
     setScanId(null)
     setScanStatus('')
@@ -176,6 +182,9 @@ export default function GoldenCrossScreen() {
             <div style={{ marginBottom: 2 }}>
               <Tag color="blue">{item.symbol}</Tag>
               <Typography.Text strong>{item.name}</Typography.Text>
+              <Tag color={item.signal_type === 'combined_gc_macd' ? 'magenta' : 'red'} style={{ marginLeft: 6 }}>
+                {item.signal_type === 'combined_gc_macd' ? '共振' : '金叉'}
+              </Tag>
             </div>
             <div style={{ fontSize: 12, color: '#666' }}>
               {item.date} 价格: {item.price.toFixed(2)}

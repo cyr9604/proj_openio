@@ -1,22 +1,46 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ReactECharts from 'echarts-for-react'
 import {
-  Card, Form, Input, InputNumber, DatePicker, Button, Statistic,
-  Row, Col, Table, Alert, Spin,
+  Card, Form, InputNumber, DatePicker, Button, Statistic,
+  Row, Col, Table, Alert, Spin, Select, Tag, Collapse,
 } from 'antd'
 import dayjs from 'dayjs'
 import { api } from '../api/client'
-import type { BacktestResult, BacktestTrade } from '../types'
+import type { BacktestResult, BacktestTrade, StrategyDetail } from '../types'
 
 interface Props {
   symbol: string
   onBacktestResult?: (trades: BacktestTrade[]) => void
 }
 
+const ruleColors: Record<string, string> = {
+  '金叉买入': 'red',
+  '回踩买入': 'blue',
+  '粘合发散买入': 'gold',
+  '共振买入': 'purple',
+  '常规止盈': 'green',
+  '死叉卖出': 'orange',
+  '跌破5日线止损': 'volcano',
+  '放量破20日线止损': 'red',
+}
+
 export default function BacktestPanel({ symbol, onBacktestResult }: Props) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<BacktestResult | null>(null)
   const [error, setError] = useState('')
+  const [strategyName, setStrategyName] = useState('ma520')
+  const [strategyDetail, setStrategyDetail] = useState<StrategyDetail | null>(null)
+  const [strategyList, setStrategyList] = useState<Record<string, { name: string; description: string }>>({})
+
+  useEffect(() => {
+    api.getStrategies().then(setStrategyList).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (strategyName) {
+      api.getStrategyInfo(strategyName).then(setStrategyDetail).catch(() => setStrategyDetail(null))
+    }
+  }, [strategyName])
 
   const handleRun = async (values: any) => {
     setLoading(true)
@@ -28,6 +52,9 @@ export default function BacktestPanel({ symbol, onBacktestResult }: Props) {
         start_date: values.range[0].format('YYYY-MM-DD'),
         end_date: values.range[1].format('YYYY-MM-DD'),
         initial_capital: values.capital || 100000,
+        fee_rate: values.fee_rate / 10000,
+        min_fee: values.min_fee,
+        strategy: strategyName,
       })
       setResult(data)
       onBacktestResult?.(data.trades)
@@ -49,21 +76,98 @@ export default function BacktestPanel({ symbol, onBacktestResult }: Props) {
 
   return (
     <Card title={`${symbol} 回测`} size="small">
-      <Form layout="inline" onFinish={handleRun} initialValues={{ capital: 100000 }}>
-        <Form.Item name="range" label="时间范围" rules={[{ required: true }]}>
-          <DatePicker.RangePicker
-            picker="date"
-            defaultValue={[dayjs().subtract(1, 'year'), dayjs()]}
-          />
-        </Form.Item>
-        <Form.Item name="capital" label="初始资金">
-          <InputNumber min={10000} max={10000000} style={{ width: 120 }} />
-        </Form.Item>
-        <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            运行回测
-          </Button>
-        </Form.Item>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 13 }}>回测策略</div>
+        <Select
+          value={strategyName}
+          onChange={setStrategyName}
+          style={{ width: 280 }}
+          options={Object.entries(strategyList).map(([k, v]) => ({
+            value: k,
+            label: v.name,
+          }))}
+          placeholder="请选择回测策略"
+        />
+      </div>
+
+      {strategyDetail && (
+        <Collapse ghost size="small" style={{ marginBottom: 16, background: '#fafafa', borderRadius: 6 }}>
+          <Collapse.Panel
+            key="strategy"
+            header={
+              <span style={{ fontWeight: 500 }}>
+                {strategyDetail.name}
+                <span style={{ color: '#999', fontWeight: 400, fontSize: 12, marginLeft: 8 }}>策略规则详情</span>
+              </span>
+            }
+          >
+            <div style={{ color: '#666', fontSize: 13, marginBottom: 12 }}>{strategyDetail.description}</div>
+            {strategyDetail.buy_rules.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 6, color: '#cf1322' }}>买入策略</div>
+                {strategyDetail.buy_rules
+                  .sort((a, b) => a.priority - b.priority)
+                  .map((r, i) => (
+                    <div key={i} style={{ marginBottom: 6, fontSize: 12, lineHeight: 1.8 }}>
+                      <Tag color={ruleColors[r.type] || 'default'} style={{ marginRight: 6 }}>{r.type}</Tag>
+                      <span style={{ color: '#666' }}>{r.condition}</span>
+                      <span style={{ color: '#1890ff', marginLeft: 6 }}>→ {r.action}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+            {strategyDetail.sell_rules.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 6, color: '#389e0d' }}>卖出策略</div>
+                {strategyDetail.sell_rules
+                  .sort((a, b) => a.priority - b.priority)
+                  .map((r, i) => (
+                    <div key={i} style={{ marginBottom: 6, fontSize: 12, lineHeight: 1.8 }}>
+                      <Tag color={ruleColors[r.type] || 'default'} style={{ marginRight: 6 }}>{r.type}</Tag>
+                      <span style={{ color: '#666' }}>{r.condition}</span>
+                      <span style={{ color: '#1890ff', marginLeft: 6 }}>→ {r.action}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+            {strategyDetail.add_rules.length > 0 && (
+              <div>
+                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 6, color: '#d46b08' }}>加仓策略</div>
+                {strategyDetail.add_rules.map((r, i) => (
+                  <div key={i} style={{ marginBottom: 6, fontSize: 12, lineHeight: 1.8 }}>
+                    <Tag color="geekblue" style={{ marginRight: 6 }}>加仓</Tag>
+                    <span style={{ color: '#666' }}>{r.condition}</span>
+                    <span style={{ color: '#1890ff', marginLeft: 6 }}>→ {r.action}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Collapse.Panel>
+        </Collapse>
+      )}
+
+      <Form layout="inline" onFinish={handleRun} initialValues={{ capital: 100000, fee_rate: 2.5, min_fee: 5, range: [dayjs().subtract(1, 'year'), dayjs()] }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 12 }}>
+          <Form.Item name="range" label="时间范围" rules={[{ required: true }]}>
+            <DatePicker.RangePicker picker="date" />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              运行回测
+            </Button>
+          </Form.Item>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <Form.Item name="capital" label="初始资金">
+            <InputNumber min={10000} max={10000000} style={{ width: 120 }} />
+          </Form.Item>
+          <Form.Item name="fee_rate" label="费率">
+            <InputNumber min={0} max={100} step={0.1} style={{ width: 120 }} addonAfter="‱" />
+          </Form.Item>
+          <Form.Item name="min_fee" label="保底费用">
+            <InputNumber min={0} max={100} step={1} style={{ width: 110 }} addonAfter="元" />
+          </Form.Item>
+        </div>
       </Form>
 
       {error && <Alert type="error" message={error} style={{ marginTop: 12 }} showIcon />}

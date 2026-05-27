@@ -15,6 +15,8 @@ class BacktestEngine:
     def __init__(self, df: pd.DataFrame, request: BacktestRequest):
         self.df = df.copy()
         self.request = request
+        self.fee_rate = request.fee_rate
+        self.min_fee = request.min_fee
         self._prepare()
 
     def _prepare(self):
@@ -123,8 +125,8 @@ class BacktestEngine:
             convergence = False
             if i >= 10:
                 recent = self.df.iloc[i-9:i+1]
-                gap = (recent["ma5"] - recent["ma20"]).abs().dropna()
-                if len(gap) >= 5 and gap.mean() < 0.5 and gap.iloc[-1] < 0.5:
+                gap_pct = ((recent["ma5"] - recent["ma20"]).abs() / recent["ma20"] * 100).dropna()
+                if len(gap_pct) >= 5 and gap_pct.mean() < 1.5 and gap_pct.iloc[-1] < 1.5:
                     if volume_ratio >= 1.5:
                         lookback_high = self.df.iloc[i-19:i]["high"].max() if i >= 19 else self.df.iloc[:i]["high"].max()
                         if price > lookback_high:
@@ -154,16 +156,27 @@ class BacktestEngine:
             stop_ma5 = (i >= 2
                 and float(self.df.iloc[i-2]["close"]) < float(self.df.iloc[i-2]["ma5"])
                 and float(self.df.iloc[i-1]["close"]) < float(self.df.iloc[i-1]["ma5"])
-                and price < ma5)
+                and price < ma5
+                and price < cost)
             stop_ma20 = (price < ma20 and volume_ratio > 1.5)
 
-            # --- Take profit: 常规15%-20%止盈 ---
+            # --- Take profit: 常规10%-20%止盈 ---
             take_profit_normal = False
             if in_position and buy_triggered:
                 buy_price = cost
                 pnl_pct = (price - buy_price) / buy_price * 100
-                if 15 <= pnl_pct <= 20:
+                if 10 <= pnl_pct <= 20:
                     take_profit_normal = True
+
+            # --- Take profit: 最小止盈(跌破MA20, 3%-5%) ---
+            take_profit_mini = False
+            if in_position and buy_triggered and i >= 1:
+                buy_price = cost
+                pnl_pct = (price - buy_price) / buy_price * 100
+                prev_close = float(self.df.iloc[i-1]["close"])
+                prev_ma20 = float(self.df.iloc[i-1]["ma20"])
+                if 3 <= pnl_pct <= 5 and prev_close > prev_ma20 and price <= ma20:
+                    take_profit_mini = True
 
             if not in_position:
                 buy_pct = 0.3
@@ -186,7 +199,7 @@ class BacktestEngine:
                     shares = int(buy_amount / (price * 100)) * 100
                     if shares > 0:
                         cost_amount = shares * price
-                        fee = max(cost_amount * 0.00025, 5)
+                        fee = max(cost_amount * self.fee_rate, self.min_fee)
                         total_fees += fee
                         if cost_amount + fee <= capital:
                             position = shares
@@ -205,20 +218,23 @@ class BacktestEngine:
                 sell_reason = ""
                 if take_profit_normal:
                     should_sell = True
-                    sell_reason = "常规止盈(15%-20%落袋为安)"
+                    sell_reason = "常规止盈(10%-20%落袋为安)"
+                elif take_profit_mini:
+                    should_sell = True
+                    sell_reason = "最小止盈(跌破MA20，锁定3%-5%利润)"
                 elif death_cross:
                     should_sell = True
                     sell_reason = "死叉卖出(强势趋势结束)"
                 elif stop_ma5:
                     should_sell = True
-                    sell_reason = "连续三日跌破5日线止损"
+                    sell_reason = "连续三日跌破5日线止损(价格低于买入价)"
                 elif stop_ma20:
                     should_sell = True
                     sell_reason = "放量跌破20日线止损(无条件清仓)"
 
                 if should_sell:
                     sell_amount = position * price
-                    fee = max(sell_amount * 0.00025, 5)
+                    fee = max(sell_amount * self.fee_rate, self.min_fee)
                     total_fees += fee
                     pnl = sell_amount - fee - position * cost
                     if pnl > 0:
@@ -240,7 +256,7 @@ class BacktestEngine:
                     add_shares = int(add_amount / (price * 100)) * 100
                     if add_shares > 0 and trend_up and price > cost:
                         add_cost = add_shares * price
-                        fee = max(add_cost * 0.00025, 5)
+                        fee = max(add_cost * self.fee_rate, self.min_fee)
                         total_fees += fee
                         if add_cost + fee <= capital:
                             total_shares_value = position * cost + add_shares * price
@@ -263,7 +279,9 @@ class BacktestEngine:
         if position > 0:
             last_price = float(self.df.iloc[-1]["close"])
             sell_amount = position * last_price
-            capital += sell_amount
+            fee = max(sell_amount * self.fee_rate, self.min_fee)
+            total_fees += fee
+            capital += (sell_amount - fee)
             trades.append(BacktestTrade(
                 date=str(self.df.iloc[-1]["trade_date"].date()),
                 action="平仓", price=round(last_price, 2),
@@ -274,7 +292,7 @@ class BacktestEngine:
         total_return = (capital - initial_capital) / initial_capital * 100
         days = (self.df.iloc[-1]["trade_date"] - self.df.iloc[20]["trade_date"]).days
         annual_return = ((1 + total_return / 100) ** (365 / max(days, 1)) - 1) * 100 if days > 0 else 0
-        total_trades = len([t for t in trades if t.action in ("买入", "加仓")])
+        total_trades = len(trades)
         win_rate = wins / max(wins + losses, 1) * 100
 
         return BacktestResponse(

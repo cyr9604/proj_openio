@@ -11,7 +11,7 @@ AdjustType = Literal["none", "forward", "backward"]
 
 class ProviderConfig:
     def __init__(self):
-        self.priority: list[str] = ["ths_http", "ths_sdk", "sina", "akshare"]
+        self.priority: list[str] = ["baostock", "efinance", "ths_http", "ths_sdk", "sina", "akshare"]
         self.ths_http_token: str = ""
         self.ths_http_refresh_token: str = ""
         self.ths_sdk_enabled: bool = False

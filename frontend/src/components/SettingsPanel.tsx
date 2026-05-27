@@ -26,7 +26,7 @@ export default function SettingsPanel() {
     <Card title="行情源配置">
       <Alert
         type="info"
-        message="同花顺 HTTP 模式需要 refresh_token；SDK 模式需本机安装 iFinD 环境。AKShare 免费可用，无需配置。"
+        message="Baostock 和 Efinance 免费可用无需配置；同花顺 HTTP 模式需要 refresh_token；SDK 模式需本机安装 iFinD 环境。"
         style={{ marginBottom: 16 }}
         showIcon
       />
@@ -35,7 +35,7 @@ export default function SettingsPanel() {
         layout="vertical"
         onFinish={handleSave}
         initialValues={{
-          priority: ['ths_http', 'ths_sdk', 'akshare'],
+          priority: ['baostock', 'efinance', 'ths_http', 'ths_sdk', 'akshare'],
           ths_http_token: '',
           ths_http_refresh_token: '',
           ths_sdk_enabled: false,
@@ -45,9 +45,12 @@ export default function SettingsPanel() {
       >
         <Form.Item name="priority" label="行情源优先级">
           <Select mode="multiple">
+            <Select.Option value="baostock">Baostock</Select.Option>
+            <Select.Option value="efinance">Efinance (东方财富)</Select.Option>
             <Select.Option value="ths_http">同花顺 HTTP</Select.Option>
             <Select.Option value="ths_sdk">同花顺 iFinD SDK</Select.Option>
             <Select.Option value="akshare">AKShare</Select.Option>
+            <Select.Option value="sina">新浪</Select.Option>
           </Select>
         </Form.Item>
         <Form.Item name="ths_http_refresh_token" label="同花顺 HTTP Refresh Token">

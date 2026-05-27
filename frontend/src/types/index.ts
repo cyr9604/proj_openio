@@ -95,6 +95,7 @@ export interface GoldenCrossItem {
   name: string
   price: number
   date: string
+  signal_type: string
   description: string
 }
 
@@ -115,4 +116,24 @@ export interface WatchlistSignalInfo {
 export interface ProviderStatusResponse {
   providers: ProviderStatus[]
   current_priority: string[]
+}
+
+export interface StrategyRule {
+  type: string
+  condition: string
+  action: string
+  priority: number
+}
+
+export interface StrategyDetail {
+  name: string
+  description: string
+  buy_rules: StrategyRule[]
+  sell_rules: StrategyRule[]
+  add_rules: StrategyRule[]
+}
+
+export interface StrategySummary {
+  name: string
+  description: string
 }

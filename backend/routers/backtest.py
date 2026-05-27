@@ -1,14 +1,16 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from datetime import date, timedelta
 
 from providers.manager import manager as provider_manager
 from strategy.backtest import BacktestEngine
-from schemas import BacktestRequest, BacktestResponse
+from strategy.registry import get_all_strategies, get_strategy_detail
+from schemas import BacktestRequest, BacktestResponse, StrategyDetail, StrategySummary
 from database import SessionLocal
 from models import BacktestResult
 import json
 
 router = APIRouter(prefix="/api/backtest", tags=["backtest"])
+strategy_router = APIRouter(prefix="/api/strategies", tags=["strategies"])
 
 
 @router.post("")
@@ -70,3 +72,16 @@ def get_backtest_detail(result_id: int):
         }
     finally:
         db.close()
+
+
+@strategy_router.get("")
+def list_strategies() -> dict[str, StrategySummary]:
+    return get_all_strategies()
+
+
+@strategy_router.get("/{name}")
+def get_strategy(name: str) -> StrategyDetail:
+    detail = get_strategy_detail(name)
+    if not detail:
+        raise HTTPException(status_code=404, detail=f"策略 '{name}' 不存在")
+    return StrategyDetail(**detail)

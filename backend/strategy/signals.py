@@ -139,10 +139,10 @@ class SignalDetector:
         ma20_vals = recent["ma20"].dropna()
         if len(ma5_vals) < 5 or len(ma20_vals) < 5:
             return signals
-        gap = (ma5_vals - ma20_vals).abs()
-        avg_gap = gap.mean()
-        last_gap = gap.iloc[-1]
-        if avg_gap >= 0.5 or last_gap >= 0.5:
+        gap_pct = ((ma5_vals - ma20_vals).abs() / ma20_vals * 100)
+        avg_gap = gap_pct.mean()
+        last_gap = gap_pct.iloc[-1]
+        if avg_gap >= 1.5 or last_gap >= 1.5:
             return signals
         curr = self.df.iloc[-1]
         reasons = []
@@ -220,12 +220,13 @@ class SignalDetector:
             return signals
         curr = self.df.iloc[-1]
         prev = self.df.iloc[-2]
-        if pd.notna(curr["ma5"]) and pd.notna(prev["close"]) and pd.notna(curr["close"]):
-            if prev["close"] < prev["ma5"] and curr["close"] < curr["ma5"]:
+        prev2 = self.df.iloc[-3]
+        if pd.notna(curr["ma5"]) and pd.notna(prev["close"]) and pd.notna(curr["close"]) and pd.notna(prev2["close"]):
+            if prev2["close"] < prev2["ma5"] and prev["close"] < prev["ma5"] and curr["close"] < curr["ma5"]:
                 signals.append(SignalPoint(
                     date=str(curr["trade_date"].date()),
                     type="stop_loss_ma5",
-                    description="连续两日收盘跌破5日线，立即止损，最大亏损控制在5%以内",
+                    description="连续三日收盘跌破5日线，立即止损，最大亏损控制在5%以内",
                     price=round(float(curr["close"]), 2),
                 ))
         if pd.notna(curr["ma20"]) and pd.notna(curr["close"]) and pd.notna(curr["volume_ratio"]):
@@ -251,16 +252,33 @@ class SignalDetector:
                     description="5日线下穿20日线形成死叉，强势趋势结束，清仓止盈/止损",
                     price=round(float(curr["close"]), 2),
                 ))
+        # --- 最小止盈: 收盘价从上方跌破MA20，盈利3-5% ---
+        if len(self.df) >= 3:
+            prev = self.df.iloc[-2]
+            prev_close = float(prev["close"])
+            prev_ma20 = float(prev["ma20"]) if pd.notna(prev["ma20"]) else None
+            curr_close = float(curr["close"])
+            curr_ma20 = float(curr["ma20"]) if pd.notna(curr["ma20"]) else None
+            if prev_ma20 is not None and curr_ma20 is not None and prev_close > prev_ma20 and curr_close <= curr_ma20:
+                entry = float(self.df.iloc[-5]["close"]) if len(self.df) >= 5 else prev_close
+                pnl_pct = (curr_close - entry) / entry * 100
+                if 3 <= pnl_pct <= 5:
+                    signals.append(SignalPoint(
+                        date=str(curr["trade_date"].date()),
+                        type="take_profit_mini",
+                        description=f"收盘价跌破MA20({curr_ma20:.2f})，估算盈利{pnl_pct:.1f}%，建议卖出止盈锁定3%-5%利润",
+                        price=round(float(curr["close"]), 2),
+                    ))
         if len(self.df) >= 5:
             last5 = self.df.iloc[-5:]
             entry_price = last5["close"].iloc[0]
             current_price = last5["close"].iloc[-1]
             pnl_pct = (current_price - entry_price) / entry_price * 100
-            if 15 <= pnl_pct <= 20:
+            if 10 <= pnl_pct <= 20:
                 signals.append(SignalPoint(
                     date=str(curr["trade_date"].date()),
                     type="take_profit_normal",
-                    description=f"盈利{pnl_pct:.1f}%，达到15%-20%止盈目标，建议卖出落袋为安",
+                    description=f"盈利{pnl_pct:.1f}%，达到10%-20%止盈目标，建议卖出落袋为安",
                     price=round(float(curr["close"]), 2),
                 ))
         return signals

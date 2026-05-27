@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from database import init_db
 from routers import stocks, watchlist, analysis, backtest, providers, settings
+from routers.backtest import strategy_router
 
 app = FastAPI(title="A-Share 520 MA Analysis System", version="1.0.0")
 
@@ -22,6 +23,7 @@ app.include_router(stocks.router)
 app.include_router(watchlist.router)
 app.include_router(analysis.router)
 app.include_router(backtest.router)
+app.include_router(strategy_router)
 app.include_router(providers.router)
 app.include_router(settings.router)
 

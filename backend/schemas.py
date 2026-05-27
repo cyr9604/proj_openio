@@ -56,6 +56,7 @@ class GoldenCrossItem(BaseModel):
     name: str
     price: float
     date: str
+    signal_type: str = "golden_cross"
     description: str
 
 
@@ -96,7 +97,30 @@ class BacktestRequest(BaseModel):
     start_date: str
     end_date: str
     initial_capital: float = 100000
+    fee_rate: float = 0.00025
+    min_fee: float = 5
     adjust: str = "forward"
+    strategy: str = "ma520"
+
+
+class StrategyRule(BaseModel):
+    type: str = ""
+    condition: str
+    action: str
+    priority: int = 0
+
+
+class StrategyDetail(BaseModel):
+    name: str
+    description: str
+    buy_rules: list[StrategyRule] = []
+    sell_rules: list[StrategyRule] = []
+    add_rules: list[StrategyRule] = []
+
+
+class StrategySummary(BaseModel):
+    name: str
+    description: str
 
 
 class BacktestTrade(BaseModel):

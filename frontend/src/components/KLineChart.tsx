@@ -74,6 +74,21 @@ export default function KLineChart({ data, signals = [], backtestSignals = [], h
     backtest_sell: '卖出',
   }
 
+  function getBtLabel(type: string, desc: string): string {
+    const prefix = type === 'backtest_buy' ? '买入' : '卖出'
+    if (desc.includes('加仓')) return '加仓'
+    if (desc.includes('共振')) return `${prefix}(共振)`
+    if (desc.includes('金叉')) return `${prefix}(金叉)`
+    if (desc.includes('回踩')) return `${prefix}(回踩)`
+    if (desc.includes('粘合')) return `${prefix}(粘合)`
+    if (desc.includes('止盈')) return `${prefix}(止盈)`
+    if (desc.includes('死叉')) return `${prefix}(死叉)`
+    if (desc.includes('跌破20日线')) return `${prefix}(止损MA20)`
+    if (desc.includes('连续')) return `${prefix}(止损MA5)`
+    if (desc.includes('平仓')) return `${prefix}(平仓)`
+    return prefix
+  }
+
   const buildSignalPoints = (dates: string[], kdata: number[][]) => {
     const points: any[] = []
     const allSignals = [
@@ -94,7 +109,7 @@ export default function KLineChart({ data, signals = [], backtestSignals = [], h
         itemStyle: { color, borderColor: '#fff', borderWidth: 1.5 },
         label: {
           show: true,
-          formatter: signalLabels[s.type] || s.type,
+          formatter: isBt ? getBtLabel(s.type, s.description) : (signalLabels[s.type] || s.type),
           position: s.type === 'backtest_buy' ? 'top' : 'bottom',
           fontSize: 9,
           color: '#fff',

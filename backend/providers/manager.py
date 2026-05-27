@@ -8,6 +8,8 @@ from database import SessionLocal
 from models import DailyQuote
 from providers.base import QuoteProvider, ProviderError
 from providers.akshare_provider import AkshareProvider
+from providers.baostock_provider import BaostockProvider
+from providers.efinance_provider import EfinanceProvider
 from providers.ths_http_provider import ThsHttpProvider
 from providers.ths_ifind_provider import ThsIfindSdkProvider
 from providers.sina_provider import SinaProvider
@@ -16,6 +18,8 @@ from providers.sina_provider import SinaProvider
 class ProviderManager:
     def __init__(self):
         self._providers: dict[str, QuoteProvider] = {
+            "baostock": BaostockProvider(),
+            "efinance": EfinanceProvider(),
             "sina": SinaProvider(),
             "akshare": AkshareProvider(),
             "ths_http": ThsHttpProvider(),
@@ -47,7 +51,8 @@ class ProviderManager:
         cached = self.get_cached_daily(symbol, start, end, adjust)
         if not cached.empty:
             latest_cache_date = cached["trade_date"].max().date()
-            if end and latest_cache_date >= end:
+            earliest_cache_date = cached["trade_date"].min().date()
+            if end and latest_cache_date >= end and start and earliest_cache_date <= start:
                 return cached
         errors = []
         for name in settings.priority:
@@ -58,13 +63,22 @@ class ProviderManager:
                 df = provider.fetch_daily(symbol, start, end, adjust)
                 if df is not None and not df.empty:
                     self._save_to_db(symbol, df)
-                    return df
+                    full = self.get_cached_daily(symbol, start, end, adjust)
+                    if not full.empty:
+                        latest = full["trade_date"].max().date()
+                        earliest = full["trade_date"].min().date()
+                        if (end is None or latest >= end) and (start is None or earliest <= start):
+                            return full
+                    continue
             except ProviderError as e:
                 errors.append(str(e))
                 continue
             except Exception as e:
                 errors.append(f"{name}: {e}")
                 continue
+        full = self.get_cached_daily(symbol, start, end, adjust)
+        if not full.empty:
+            return full
         if not cached.empty:
             return cached
         raise ProviderError(

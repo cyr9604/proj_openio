@@ -44,12 +44,21 @@ export const api = {
     start_date: string
     end_date: string
     initial_capital: number
+    fee_rate?: number
+    min_fee?: number
     adjust?: string
+    strategy?: string
   }) =>
     request<import('../types').BacktestResult>('/backtest', {
       method: 'POST',
       body: JSON.stringify(params),
     }),
+
+  getStrategies: () =>
+    request<Record<string, import('../types').StrategySummary>>('/strategies'),
+
+  getStrategyInfo: (name: string) =>
+    request<import('../types').StrategyDetail>(`/strategies/${name}`),
 
   getGoldenCrossStocks: () =>
     request<import('../types').GoldenCrossItem[]>('/stocks/golden-cross'),

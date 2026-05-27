@@ -131,24 +131,25 @@ def _run_full_scan(scan_id: str, all_stocks: list[tuple[str, str]]):
         symbol, name = all_stocks[i]
         try:
             end = date.today()
-            start = end - timedelta(days=60)
+            start = end - timedelta(days=30)
             df = provider_manager.fetch_daily(symbol, start, end, "forward")
-            if df.empty or len(df) < 25:
+            if df.empty or len(df) < 27:
                 i += 1
                 state.processed = i
                 continue
             engine = StrategyEngine(df)
             signals = engine.get_signals()
-            golden = [s for s in signals if s.type == "golden_cross"]
-            if golden:
-                s = golden[0]
-                state.results.append(GoldenCrossItem(
-                    symbol=symbol,
-                    name=name,
-                    price=s.price,
-                    date=s.date,
-                    description=s.description,
-                ))
+            targets = [s for s in signals if s.type in ("golden_cross", "combined_gc_macd")]
+            if targets:
+                for s in targets:
+                    state.results.append(GoldenCrossItem(
+                        symbol=symbol,
+                        name=name,
+                        price=s.price,
+                        date=s.date,
+                        signal_type=s.type,
+                        description=s.description,
+                    ))
         except Exception:
             pass
         i += 1
@@ -285,23 +286,24 @@ def get_golden_cross_stocks():
     for symbol in symbols:
         try:
             end = date.today()
-            start = end - timedelta(days=60)
+            start = end - timedelta(days=30)
             df = provider_manager.fetch_daily(symbol, start, end, "forward")
-            if df.empty or len(df) < 25:
+            if df.empty or len(df) < 27:
                 continue
             engine = StrategyEngine(df)
             signals = engine.get_signals()
-            golden = [s for s in signals if s.type == "golden_cross"]
-            if golden:
-                s = golden[0]
+            targets = [s for s in signals if s.type in ("golden_cross", "combined_gc_macd")]
+            if targets:
                 info = _get_stock_name(symbol)
-                results.append(GoldenCrossItem(
-                    symbol=symbol,
-                    name=info,
-                    price=s.price,
-                    date=s.date,
-                    description=s.description,
-                ))
+                for s in targets:
+                    results.append(GoldenCrossItem(
+                        symbol=symbol,
+                        name=info,
+                        price=s.price,
+                        date=s.date,
+                        signal_type=s.type,
+                        description=s.description,
+                    ))
         except Exception:
             continue
 
