@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="mewofanxiv/stock-analysis"
+REPO="crpi-m1pdy3u1ypkkbct5.cn-hangzhou.personal.cr.aliyuncs.com/opencode_meowfan/stock-analysis"
 PORT=8000
 DATA_DIR="/opt/stock-analysis/data"
 VERSION="latest"
