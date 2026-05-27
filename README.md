@@ -4,17 +4,25 @@ A technical analysis system for A-shares based on the 5-period and 20-period mov
 
 ## One-Click Deploy (Linux)
 
+### Global (GitHub + Docker Hub)
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cyr9604/proj_openio/main/scripts/install.sh | bash
+```
+
+### China (Gitee + Pre-built Image)
+
+```bash
+curl -fsSL https://gitee.com/meowfan/proj_openio/raw/master/scripts/install-gitee.sh | bash
 ```
 
 Customize with parameters:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cyr9604/proj_openio/main/scripts/install.sh | bash -s -- \
+curl -fsSL https://gitee.com/meowfan/proj_openio/raw/master/scripts/install-gitee.sh | bash -s -- \
   --port 8000 \
   --data-dir /opt/stock-analysis/data \
-  --version latest
+  --version 1.0
 ```
 
 ## Tech Stack
