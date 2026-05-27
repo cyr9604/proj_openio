@@ -27,6 +27,11 @@ backend/symbol_cache.json
 # Runtime config (user-specific)
 backend/config.json
 
+# Docker images
+*.tar
+*.tar.gz
+*.tar.xz
+
 # IDE
 .idea/
 .vscode/

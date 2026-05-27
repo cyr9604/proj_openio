@@ -2,6 +2,21 @@
 
 A technical analysis system for A-shares based on the 5-period and 20-period moving averages (520 Strategy), featuring golden cross scanning, pullback analysis, moving average convergence/divergence detection, and backtesting.
 
+## One-Click Deploy (Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cyr9604/proj_openio/main/scripts/install.sh | bash
+```
+
+Customize with parameters:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cyr9604/proj_openio/main/scripts/install.sh | bash -s -- \
+  --port 8000 \
+  --data-dir /opt/stock-analysis/data \
+  --version latest
+```
+
 ## Tech Stack
 
 | Layer    | Technology                    |
@@ -28,6 +43,8 @@ A technical analysis system for A-shares based on the 5-period and 20-period mov
 │       ├── components/   # UI components
 │       └── api/          # API client
 ├── docs/                 # Documentation
+├── scripts/              # One-click deployment scripts
+│   └── install.sh        #   Linux auto-installer
 ├── Dockerfile            # Docker build
 ├── docker-compose.yml    # Docker Compose config
 ├── start.bat             # Windows dev startup
